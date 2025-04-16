@@ -15,10 +15,11 @@ on:
   push:
     branches:
       - main
+      - release/*
 
 env:
-  BUILD_ARGS: ${{ github.event.inputs?.build_args || secrets.BUILD_ARGS }}
-  WORKING_DIRECTORY: ${{ github.event.inputs?.working_directory || secrets.WORKING_DIRECTORY }}
+  BUILD_ARGS: ${{ github.event.inputs.build_args || secrets.BUILD_ARGS }}
+  WORKING_DIRECTORY: ${{ github.event.inputs.working_directory || secrets.WORKING_DIRECTORY }}
   ACTIONS_ALLOW_UNSECURE_COMMANDS: true # TODO: only needed until act supports the new way
 
 jobs:
