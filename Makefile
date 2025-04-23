@@ -2,7 +2,7 @@
 
 # Define environment variables
 ACT ?= act
-DOCKER_IMAGE ?= ml-buildkit-image
+DOCKER_IMAGE ?= khulnasoft/ml-workspace
 BUILD_ARGS ?= "--make"
 VERSION ?= "v1.0.0"
 GITHUB_TOKEN ?= $(shell echo $GITHUB_TOKEN)

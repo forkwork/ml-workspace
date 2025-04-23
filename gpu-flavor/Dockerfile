@@ -1,6 +1,4 @@
-ARG ARG_WORKSPACE_BASE_IMAGE="khulnasoft/ml-workspace:latest"
-# Build from full flavor of workspace with same version
-FROM $ARG_WORKSPACE_BASE_IMAGE
+FROM khulnasoft/ml-workspace:latest AS base
 
 ARG ARG_WORKSPACE_FLAVOR="gpu"
 ENV WORKSPACE_FLAVOR=$ARG_WORKSPACE_FLAVOR
@@ -9,32 +7,25 @@ USER root
 
 ### NVIDIA CUDA BASE ###
 # https://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/11.2.2/ubuntu20.04-x86_64/base/Dockerfile
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gnupg2 curl ca-certificates && \
-    curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/7fa2af80.pub | apt-key add - && \
-    echo "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64 /" > /etc/apt/sources.list.d/cuda.list && \
-    echo "deb https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu2004/x86_64 /" > /etc/apt/sources.list.d/nvidia-ml.list && \
-    # Cleanup - cannot use cleanup script here, otherwise too much is removed
+# Update NVIDIA GPG key
+RUN sudo apt-get update && sudo apt-get install -y --no-install-recommends gnupg2 curl && \
+    curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/3bf863cc.pub | gpg --dearmor -o /usr/share/keyrings/nvidia-archive-keyring.gpg && \
+    echo "deb [signed-by=/usr/share/keyrings/nvidia-archive-keyring.gpg] https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64 /" > /etc/apt/sources.list.d/cuda.list && \
+    echo "deb [signed-by=/usr/share/keyrings/nvidia-archive-keyring.gpg] https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu2004/x86_64 /" > /etc/apt/sources.list.d/nvidia-ml.list && \
+    apt-get update && apt-get install -y --no-install-recommends \
+    cuda-cudart-11-2 \
+    cuda-compat-11-2 && \
+    ln -s cuda-11.2 /usr/local/cuda && \
+    rm -rf /var/lib/apt/lists/* && \
     apt-get clean && \
     rm -rf $HOME/.cache/* && \
-    rm -rf /tmp/* && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /tmp/*
 
 ENV CUDA_VERSION 11.2.2
 #ENV CUDA_PKG_VERSION 11-2=$CUDA_VERSION-1
 #ENV CUDART_VERSION 11-2=$CUDA_VERSION46-1
 
 # For libraries in the cuda-compat-* package: https://docs.nvidia.com/cuda/eula/index.html#attachment-a
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    cuda-cudart-11-2=11.2.152-1 \
-    cuda-compat-11-2 \
-    && ln -s cuda-11.2 /usr/local/cuda && \
-    rm -rf /var/lib/apt/lists/* && \
-    # Cleanup - cannot use cleanup script here, otherwise too much is removed
-    apt-get clean && \
-    rm -rf $HOME/.cache/* && \
-    rm -rf /tmp/* && \
-    rm -rf /var/lib/apt/lists/*
 
 # Required for nvidia-docker v1
 RUN echo "/usr/local/nvidia/lib" >> /etc/ld.so.conf.d/nvidia.conf \

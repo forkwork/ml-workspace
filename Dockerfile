@@ -48,67 +48,61 @@ COPY resources/scripts/clean-layer.sh resources/scripts/fix-permissions.sh /usr/
 RUN chmod a+rx /usr/bin/clean-layer.sh /usr/bin/fix-permissions.sh
 
 # Create directories, install basic dependencies, and configure the environment
-RUN set -ex && \
-    # Create directories with proper permissions
-    mkdir -p $RESOURCES_PATH $WORKSPACE_HOME $SSL_RESOURCES_PATH && \
-    chmod a+rwx $RESOURCES_PATH $WORKSPACE_HOME $SSL_RESOURCES_PATH && \
-    \
-    # Create non-root user for security
-    groupadd -r appuser && \
-    useradd -r -g appuser -d /home/appuser -m appuser && \
-    \
-    # Install core packages in a single layer
-    apt-get update && \
-    apt-get install -y --no-install-recommends \
-        locales ca-certificates curl wget \
-        apt-utils apt-transport-https gnupg2 \
-        software-properties-common \
-        build-essential pkg-config lsof net-tools \
-        openssh-client openssh-server sslh autossh \
-        openssl iproute2 psmisc tmux dpkg-sig uuid-dev \
-        xclip time libssl-dev xz-utils gawk swig \
-        graphviz libgraphviz-dev screen nano \
-        sqlite3 xmlstarlet parallel libspatialindex-dev \
-        yara less tree bash-completion iputils-ping \
-        socat jq rsync libsqlite3-dev git subversion \
-        libzmq3-dev protobuf-compiler autoconf automake \
-        libtool cmake zip gzip unzip bzip2 lzop \
-        libarchive-tools zlib1g-dev libbz2-dev liblzma-dev && \
-    # Configure locales
-    sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && \
-    locale-gen && \
-    update-locale LANG=en_US.UTF-8 && \
-    \
-    # Add git PPA for latest version
-    add-apt-repository -y ppa:git-core/ppa && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends git && \
-    \
-    # Configure SSH 
-    mkdir -p $HOME/.ssh/ && \
-    touch $HOME/.ssh/config && \
-    chmod 700 $HOME/.ssh && \
-    printenv >> $HOME/.ssh/environment && \
-    mkdir -p /var/run/sshd && chmod 400 /var/run/sshd && \
-    \
-    # Install Node.js (single installation for all stages)
-    curl -sL https://deb.nodesource.com/setup_${NODE_VERSION} | bash - && \
-    apt-get install -y --no-install-recommends nodejs && \
-    npm install -g npm yarn typescript webpack node-gyp && \
-    npm cache clean --force && \
-    \
-    # Clean up
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/* && \
-    clean-layer.sh
+RUN set -euxo pipefail
+RUN mkdir -p $RESOURCES_PATH $WORKSPACE_HOME $SSL_RESOURCES_PATH
+RUN chmod a+rwx $RESOURCES_PATH $WORKSPACE_HOME $SSL_RESOURCES_PATH
+
+RUN groupadd -r appuser
+RUN useradd -r -g appuser -d /home/appuser -m appuser
+
+RUN apt-get update
+RUN apt-get install -y --no-install-recommends locales ca-certificates curl wget
+RUN apt-get install -y --no-install-recommends apt-utils apt-transport-https gnupg2
+RUN apt-get install -y --no-install-recommends software-properties-common
+RUN apt-get install -y --no-install-recommends build-essential pkg-config lsof net-tools
+RUN apt-get install -y --no-install-recommends openssh-client openssh-server sslh autossh
+RUN apt-get install -y --no-install-recommends openssl iproute2 psmisc tmux dpkg-sig uuid-dev
+RUN apt-get install -y --no-install-recommends xclip time libssl-dev xz-utils gawk swig
+RUN apt-get install -y --no-install-recommends graphviz libgraphviz-dev screen nano
+RUN apt-get install -y --no-install-recommends sqlite3 xmlstarlet parallel libspatialindex-dev
+RUN apt-get install -y --no-install-recommends yara less tree bash-completion iputils-ping
+RUN apt-get install -y --no-install-recommends socat jq rsync libsqlite3-dev git subversion
+RUN apt-get install -y --no-install-recommends libzmq3-dev protobuf-compiler autoconf automake
+RUN apt-get install -y --no-install-recommends libtool cmake zip gzip unzip bzip2 lzop
+RUN apt-get install -y --no-install-recommends libarchive-tools zlib1g-dev libbz2-dev liblzma-dev
+
+RUN sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen
+RUN locale-gen
+RUN update-locale LANG=en_US.UTF-8
+
+RUN add-apt-repository -y ppa:git-core/ppa
+RUN apt-get update
+RUN apt-get install -y --no-install-recommends git
+
+RUN mkdir -p $HOME/.ssh/
+RUN touch $HOME/.ssh/config
+RUN chmod 700 $HOME/.ssh
+RUN printenv >> $HOME/.ssh/environment
+RUN mkdir -p /var/run/sshd
+RUN chmod 400 /var/run/sshd
+
+RUN curl -sL https://deb.nodesource.com/setup_18.x | bash -
+RUN apt-get install -y --no-install-recommends nodejs
+RUN npm install -g npm yarn typescript webpack node-gyp
+RUN npm cache clean --force
+
+RUN apt-get clean
+RUN rm -rf /var/lib/apt/lists/*
+RUN clean-layer.sh
 
 # Add tini for proper signal handling
-RUN set -ex && \
-    wget --no-verbose https://github.com/krallin/tini/releases/download/v${TINI_VERSION}/tini -O /tini && \
+RUN set -euxo pipefail && \
+    wget --no-verbose --retry-connrefused --waitretry=5 --timeout=30 \
+        https://github.com/krallin/tini/releases/download/v${TINI_VERSION}/tini -O /tini && \
     chmod +x /tini
 
 # Install OpenResty (nginx)
-RUN set -ex && \
+RUN set -euxo pipefail && \
     # Install OpenResty dependencies
     apt-get update && \
     apt-get purge -y nginx nginx-common && \
@@ -117,7 +111,8 @@ RUN set -ex && \
     # Build and install OpenResty
     mkdir -p /tmp/openresty && \
     cd /tmp/openresty && \
-    wget --no-verbose https://openresty.org/download/openresty-${OPEN_RESTY_VERSION}.tar.gz -O ./openresty.tar.gz && \
+    wget --no-verbose --retry-connrefused --waitretry=5 --timeout=30 \
+        https://openresty.org/download/openresty-${OPEN_RESTY_VERSION}.tar.gz -O ./openresty.tar.gz && \
     tar xfz ./openresty.tar.gz && \
     cd ./openresty-${OPEN_RESTY_VERSION}/ && \
     ./configure --with-http_stub_status_module --with-http_sub_module > /dev/null && \
@@ -139,7 +134,7 @@ ENV PATH="/usr/local/openresty/nginx/sbin:$PATH" \
     PATH="/opt/node/bin:$PATH"
 
 # Install pyenv for managing Python versions
-RUN set -ex && \
+RUN set -euxo pipefail && \
     apt-get update && \
     apt-get install -y --no-install-recommends libffi-dev && \
     git clone --depth 1 https://github.com/pyenv/pyenv.git $RESOURCES_PATH/.pyenv && \
@@ -157,6 +152,9 @@ ENV PATH="$RESOURCES_PATH/.pyenv/shims:$RESOURCES_PATH/.pyenv/bin:$PATH" \
     PYENV_ROOT="$RESOURCES_PATH/.pyenv"
 
 # Install pipx for isolated application installations
-RUN pip install pipx && \
-    python -m pipx ensurepath && \
-    fix-permissions.sh $HOME/.local && \
+RUN apt-get update && apt-get install -y python3 python3-pip
+RUN set -euxo pipefail && \
+    python3 -m pip install --upgrade pip && \
+    pip3 install pipx && \
+    python3 -m pipx ensurepath && \
+    fix-permissions.sh $HOME/.local && true
