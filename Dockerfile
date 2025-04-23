@@ -23,6 +23,14 @@ ARG VCS_REF="unknown"
 ARG WORKSPACE_VERSION="unknown"
 ARG BUILD_DATE="unknown"
 
+# Metadata labels for the image
+LABEL org.opencontainers.image.created="${BUILD_DATE}" \
+      org.opencontainers.image.revision="${VCS_REF}" \
+      org.opencontainers.image.version="${WORKSPACE_VERSION}" \
+      org.opencontainers.image.authors="khulnasoft" \
+      org.opencontainers.image.license="MIT" \
+      org.opencontainers.image.title="ML Workspace"
+
 # Common environment variables used across all stages
 ENV DEBIAN_FRONTEND="noninteractive" \
     SHELL="/bin/bash" \

@@ -1,4 +1,11 @@
 FROM khulnasoft/ml-workspace:latest AS base
+SHELL ["/bin/bash","-o","pipefail","-c"]
+ARG CUDA_VERSION="11.2.2"
+LABEL org.opencontainers.image.base.name="khulnasoft/ml-workspace" \
+      org.opencontainers.image.base.variant="gpu" \
+      org.opencontainers.image.cuda.version="${CUDA_VERSION}" \
+      org.opencontainers.image.license="MIT" \
+      org.opencontainers.image.authors="khulnasoft"
 
 ARG ARG_WORKSPACE_FLAVOR="gpu"
 ENV WORKSPACE_FLAVOR=$ARG_WORKSPACE_FLAVOR
@@ -8,7 +15,7 @@ USER root
 ### NVIDIA CUDA BASE ###
 # https://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/11.2.2/ubuntu20.04-x86_64/base/Dockerfile
 # Update NVIDIA GPG key
-RUN sudo apt-get update && sudo apt-get install -y --no-install-recommends gnupg2 curl && \
+RUN apt-get update && apt-get install -y --no-install-recommends gnupg2 curl && \
     curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/3bf863cc.pub | gpg --dearmor -o /usr/share/keyrings/nvidia-archive-keyring.gpg && \
     echo "deb [signed-by=/usr/share/keyrings/nvidia-archive-keyring.gpg] https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64 /" > /etc/apt/sources.list.d/cuda.list && \
     echo "deb [signed-by=/usr/share/keyrings/nvidia-archive-keyring.gpg] https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu2004/x86_64 /" > /etc/apt/sources.list.d/nvidia-ml.list && \
